@@ -15,7 +15,7 @@
     const bucket = new WeakMap()
 
     // 原始数据
-    const data = { foo: 1 }
+    const data = { foo: 1, bar: 2 }
 
     // 对原始数据的代理
     const obj = new Proxy(data, {
@@ -91,16 +91,22 @@
         activeEffect = effectFn
         effectStack.push(activeEffect)
 
-        fn()
+        const res = fn()
 
         effectStack.pop()
         activeEffect = effectStack[effectStack.length - 1]
+
+        return res
       }
 
       effectFn.options = options
-      // activeEffect.deps 用来存储所有与该副作用函数相关联的依赖集合
       effectFn.deps = []
-      effectFn()
+
+      if (!options.lazy) {
+        effectFn()
+      }
+
+      return effectFn
     }
 
     function cleanup(effectFn) {
@@ -127,21 +133,26 @@
         })
     }
 
-    // =========================
+    // ============ Methods ============
 
-    effect(
-      () => {
-        console.log(obj.foo)
-      },
-      {
-        scheduler: (effectFn) => {
-          jobQueue.add(effectFn)
-          flushJob()
+    function computed(getter) {
+      const effectFn = effect(getter, { lazy: true })
+
+      const obj = {
+        get value() {
+          return effectFn()
         },
       }
-    )
 
-    obj.foo++
-    obj.foo++
+      return obj
+    }
+
+    // ============ Testing ============
+
+    const sum = computed(() => {
+      return obj.foo + obj.bar
+    })
+
+    console.log(sum.value)
   </script>
 </html>
