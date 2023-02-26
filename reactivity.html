@@ -23,27 +23,7 @@
         // 没有 activeEffect，直接返回属性值
         if (!activeEffect) return target[key]
 
-        // 从桶里取出 target 对应的 depsMap
-        let depsMap = bucket.get(target)
-        if (!depsMap) {
-          depsMap = new Map()
-          bucket.set(target, depsMap)
-        }
-
-        // 从 depsMap 中取出 key 对应的 deps
-        let deps = depsMap.get(key)
-        if (!deps) {
-          deps = new Set()
-          depsMap.set(key, deps)
-        }
-
-        // 把副作用函数添加到 deps 中
-        deps.add(activeEffect)
-
-        // 最后建立的关联关系如下
-        // target
-        //     └── key
-        //         └── effectFn
+        track(target, key)
 
         return target[key]
       },
@@ -53,13 +33,28 @@
         target[key] = newVal
 
         // 取出所有 effectFn 并执行
-        const depsMap = bucket.get(target)
-        if (!depsMap) return
-
-        const effects = depsMap.get(key)
-        effects && effects.forEach((effect) => effect())
+        trigger(target, key)
       },
     })
+
+    function track(target, key) {
+      let depsMap = bucket.get(target)
+      if (!depsMap) {
+        bucket.set(target, (depsMap = new Map()))
+      }
+      let deps = depsMap.get(key)
+      if (!deps) {
+        depsMap.set(key, (deps = new Set()))
+      }
+      deps.add(activeEffect)
+    }
+
+    function trigger(target, key) {
+      const depsMap = bucket.get(target)
+      if (!depsMap) return
+      const effects = depsMap.get(key)
+      effects && effects.forEach((fn) => fn())
+    }
 
     // 用一个全局变量存储当前激活的 effect 函数
     let activeEffect
