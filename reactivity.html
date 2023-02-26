@@ -12,7 +12,7 @@
   <body></body>
   <script>
     // 存储副作用函数的桶
-    const bucket = new Set()
+    const bucket = new WeakMap()
 
     // 原始数据
     const data = { text: 'hello world' }
@@ -20,23 +20,63 @@
     const obj = new Proxy(data, {
       // 拦截读取操作
       get(target, key) {
-        // 将副作用函数 effect 添加到存储副作用函数的桶中
-        bucket.add(effect)
-        // 返回属性值
+        // 没有 activeEffect，直接返回属性值
+        if (!activeEffect) return target[key]
+
+        // 从桶里取出 target 对应的 depsMap
+        let depsMap = bucket.get(target)
+        if (!depsMap) {
+          depsMap = new Map()
+          bucket.set(target, depsMap)
+        }
+
+        // 从 depsMap 中取出 key 对应的 deps
+        let deps = depsMap.get(key)
+        if (!deps) {
+          deps = new Set()
+          depsMap.set(key, deps)
+        }
+
+        // 把副作用函数添加到 deps 中
+        deps.add(activeEffect)
+
+        // 最后建立的关联关系如下
+        // target
+        //     └── key
+        //         └── effectFn
+
         return target[key]
       },
       // 拦截设置操作
       set(target, key, newVal) {
         // 设置属性值
         target[key] = newVal
-        // 把副作用函数从桶里取出并执行
-        bucket.forEach((fn) => fn())
+
+        // 取出所有 effectFn 并执行
+        const depsMap = bucket.get(target)
+        if (!depsMap) return
+
+        const effects = depsMap.get(key)
+        effects && effects.forEach((effect) => effect())
       },
     })
 
-    function effect() {
-      document.body.innerText = obj.text
+    // 用一个全局变量存储当前激活的 effect 函数
+    let activeEffect
+    function effect(fn) {
+      // 当调用 effect 注册副作用函数时，将副作用函数复制给 activeEffect
+      activeEffect = fn
+      // 执行副作用函数
+      fn()
     }
-    effect()
+
+    effect(() => {
+      console.log('effect run')
+      document.body.innerText = obj.text
+    })
+
+    setTimeout(() => {
+      obj.text = 'hello vue3'
+    }, 1000)
   </script>
 </html>
