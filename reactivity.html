@@ -108,9 +108,26 @@
       effectFn.length = 0
     }
 
-    // =========================
+    // Set 的特性可以帮助去重
+    const jobQueue = new Set()
+    // 创建一个 Promise 实例，用来存储微任务
+    const jobPromise = Promise.resolve()
 
-    let temp1, temp2
+    let isFlushing = false
+    function flushJob() {
+      if (isFlushing) return
+      isFlushing = true
+
+      jobPromise
+        .then(() => {
+          jobQueue.forEach((job) => job())
+        })
+        .finally(() => {
+          isFlushing = false
+        })
+    }
+
+    // =========================
 
     effect(
       () => {
@@ -118,12 +135,13 @@
       },
       {
         scheduler: (effectFn) => {
-          setTimeout(effectFn)
+          jobQueue.add(effectFn)
+          flushJob()
         },
       }
     )
 
     obj.foo++
-    console.log('结束了')
+    obj.foo++
   </script>
 </html>
