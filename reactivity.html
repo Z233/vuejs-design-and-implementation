@@ -142,7 +142,10 @@
       const effectFn = effect(getter, {
         lazy: true,
         scheduler: () => {
-          dirty = true
+          if (!dirty) {
+            dirty = true
+            trigger(obj, 'value')
+          }
         },
       })
 
@@ -153,6 +156,7 @@
             dirty = false
           }
 
+          track(obj, 'value')
           return value
         },
       }
@@ -166,11 +170,10 @@
       return obj.foo + obj.bar
     })
 
-    console.log(sum.value)
-    console.log(sum.value)
+    effect(() => {
+      console.log('sum', sum.value)
+    })
 
     obj.foo++
-
-    console.log(sum.value)
   </script>
 </html>
