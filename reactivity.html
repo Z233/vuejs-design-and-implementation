@@ -71,14 +71,20 @@
           }
         })
 
-      effectsToRun.forEach((effect) => effect())
+      effectsToRun.forEach((effectFn) => {
+        if (effectFn.options.scheduler) {
+          effectFn.options.scheduler(effectFn)
+        } else {
+          effectFn()
+        }
+      })
     }
 
     // 用一个全局变量存储当前激活的 effect 函数
     let activeEffect
     const effectStack = []
 
-    function effect(fn) {
+    function effect(fn, options = {}) {
       const effectFn = () => {
         cleanup(effectFn)
 
@@ -91,6 +97,7 @@
         activeEffect = effectStack[effectStack.length - 1]
       }
 
+      effectFn.options = options
       // activeEffect.deps 用来存储所有与该副作用函数相关联的依赖集合
       effectFn.deps = []
       effectFn()
@@ -105,9 +112,18 @@
 
     let temp1, temp2
 
-    effect(() => {
-      console.log('effect run')
-      obj.foo++
-    })
+    effect(
+      () => {
+        console.log(obj.foo)
+      },
+      {
+        scheduler: (effectFn) => {
+          setTimeout(effectFn)
+        },
+      }
+    )
+
+    obj.foo++
+    console.log('结束了')
   </script>
 </html>
