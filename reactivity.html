@@ -136,11 +136,24 @@
     // ============ Methods ============
 
     function computed(getter) {
-      const effectFn = effect(getter, { lazy: true })
+      let value
+      let dirty = true
+
+      const effectFn = effect(getter, {
+        lazy: true,
+        scheduler: () => {
+          dirty = true
+        },
+      })
 
       const obj = {
         get value() {
-          return effectFn()
+          if (dirty) {
+            value = effectFn()
+            dirty = false
+          }
+
+          return value
         },
       }
 
@@ -152,6 +165,11 @@
     const sum = computed(() => {
       return obj.foo + obj.bar
     })
+
+    console.log(sum.value)
+    console.log(sum.value)
+
+    obj.foo++
 
     console.log(sum.value)
   </script>
