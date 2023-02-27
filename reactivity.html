@@ -15,7 +15,7 @@
     const bucket = new WeakMap()
 
     // 原始数据
-    const data = { foo: 1, bar: 2 }
+    const data = { foo: 0, bar: 2 }
 
     // 对原始数据的代理
     const obj = new Proxy(data, {
@@ -174,10 +174,21 @@
 
       let oldValue, newValue
 
+      // cleanup 用来存储用户注册的过期回调
+      let cleanup
+      function onInvalidate(fn) {
+        cleanup = fn
+      }
+
       const job = () => {
         // 在 scheduler 中重新执行副作用函数，得到的是新值
         newValue = effectFn()
-        callback(newValue, oldValue)
+
+        // 如果用户注册了过期回调，执行过期回调
+        if (cleanup) cleanup()
+        // 将 onInvalidate 传递给用户调用
+        callback(newValue, oldValue, onInvalidate)
+
         // 更新旧值，不然下一次会得到错误的旧值
         oldValue = newValue
       }
@@ -222,19 +233,35 @@
 
     watch(
       () => obj.foo,
-      (newVal, oldVal) => {
-        console.log('数据变化了', {
-          newVal,
-          oldVal,
+      async (newVal, oldVal, onInvalidate) => {
+        let expired = false
+        onInvalidate(() => {
+          expired = true
         })
-      },
-      {
-        flush: 'post', // 'pre' | 'post' | 'sync'
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 2000 - newVal * 1000)
+        )
+
+        const res = await fetch('https://api.quotable.io/random')
+          .then((res) => res.json())
+          .then((res) => res.content)
+
+        console.log(`第 ${newVal} 个请求：`, res)
+
+        if (!expired) {
+          window.finalData = res
+        }
+
+        // 最新数据应该是第二个请求的值
+        console.log('最新数据：', window.finalData)
       }
     )
 
+    obj.foo++
     setTimeout(() => {
+      console.log('数据更新了')
       obj.foo++
-    }, 1000)
+    }, 100)
   </script>
 </html>
