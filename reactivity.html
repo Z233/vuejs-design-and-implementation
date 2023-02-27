@@ -172,11 +172,20 @@
         getter = () => traverse(source)
       }
 
-      effect(() => getter(), {
+      let oldValue, newValue
+
+      const effectFn = effect(() => getter(), {
+        lazy: true,
         scheduler: () => {
-          callback()
+          // 在 scheduler 中重新执行副作用函数，得到的是新值
+          newValue = effectFn()
+          callback(newValue, oldValue)
+          // 更新旧值，不然下一次会得到错误的旧值
+          oldValue = newValue
         },
       })
+
+      oldValue = effectFn()
     }
 
     function traverse(value, seen = new Set()) {
@@ -198,9 +207,19 @@
 
     // ============ Testing ============
 
-    watch(obj, () => {
-      console.log('数据变化了')
-    })
+    watch(
+      () => obj.foo,
+      (newVal, oldVal) => {
+        console.log('数据变化了', {
+          newVal,
+          oldVal,
+        })
+      }
+    )
+
+    setTimeout(() => {
+      obj.foo++
+    }, 1000)
 
     obj.foo++
   </script>
