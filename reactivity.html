@@ -164,7 +164,7 @@
       return obj
     }
 
-    function watch(source, callback) {
+    function watch(source, callback, options = {}) {
       let getter
       if (typeof source === 'function') {
         getter = source
@@ -174,18 +174,24 @@
 
       let oldValue, newValue
 
+      const job = () => {
+        // 在 scheduler 中重新执行副作用函数，得到的是新值
+        newValue = effectFn()
+        callback(newValue, oldValue)
+        // 更新旧值，不然下一次会得到错误的旧值
+        oldValue = newValue
+      }
+
       const effectFn = effect(() => getter(), {
         lazy: true,
-        scheduler: () => {
-          // 在 scheduler 中重新执行副作用函数，得到的是新值
-          newValue = effectFn()
-          callback(newValue, oldValue)
-          // 更新旧值，不然下一次会得到错误的旧值
-          oldValue = newValue
-        },
+        scheduler: job,
       })
 
-      oldValue = effectFn()
+      if (options.immediate) {
+        job()
+      } else {
+        oldValue = effectFn()
+      }
     }
 
     function traverse(value, seen = new Set()) {
@@ -214,13 +220,14 @@
           newVal,
           oldVal,
         })
+      },
+      {
+        immediate: true,
       }
     )
 
     setTimeout(() => {
       obj.foo++
     }, 1000)
-
-    obj.foo++
   </script>
 </html>
