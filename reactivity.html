@@ -164,14 +164,42 @@
       return obj
     }
 
+    function watch(source, callback) {
+      let getter
+      if (typeof source === 'function') {
+        getter = source
+      } else {
+        getter = () => traverse(source)
+      }
+
+      effect(() => getter(), {
+        scheduler: () => {
+          callback()
+        },
+      })
+    }
+
+    function traverse(value, seen = new Set()) {
+      if (
+        typeof value !== 'object' ||
+        value === null ||
+        seen.has(value)
+      )
+        return
+
+      seen.add(value)
+
+      for (const key in value) {
+        traverse(value[key], seen)
+      }
+
+      return value
+    }
+
     // ============ Testing ============
 
-    const sum = computed(() => {
-      return obj.foo + obj.bar
-    })
-
-    effect(() => {
-      console.log('sum', sum.value)
+    watch(obj, () => {
+      console.log('数据变化了')
     })
 
     obj.foo++
