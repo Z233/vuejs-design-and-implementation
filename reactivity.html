@@ -32,10 +32,14 @@
       },
       // 拦截设置操作
       set(target, key, newVal, receiver) {
+        const type = Object.prototype.hasOwnProperty.call(target, key)
+          ? TriggerType.SET
+          : TriggerType.ADD
+
         const res = Reflect.set(target, key, newVal, receiver)
 
         // 取出所有 effectFn 并执行
-        trigger(target, key)
+        trigger(target, key, type)
 
         return res
       },
@@ -71,7 +75,12 @@
       activeEffect.deps.push(deps)
     }
 
-    function trigger(target, key) {
+    const TriggerType = {
+      SET: 'SET',
+      ADD: 'ADD',
+    }
+
+    function trigger(target, key, type) {
       const depsMap = bucket.get(target)
       if (!depsMap) return
       const effects = depsMap.get(key)
@@ -84,13 +93,15 @@
           }
         })
 
-      const iterateEffects = depsMap.get(ITERATE_KEY)
-      iterateEffects &&
-        iterateEffects.forEach((effect) => {
-          if (effect !== activeEffect) {
-            effectsToRun.add(effect)
-          }
-        })
+      if (type === TriggerType.ADD) {
+        const iterateEffects = depsMap.get(ITERATE_KEY)
+        iterateEffects &&
+          iterateEffects.forEach((effect) => {
+            if (effect !== activeEffect) {
+              effectsToRun.add(effect)
+            }
+          })
+      }
 
       effectsToRun.forEach((effectFn) => {
         if (effectFn.options.scheduler) {
@@ -254,12 +265,12 @@
 
     effect(() => {
       for (const key in obj) {
-        console.log(key, obj[key])
+        console.log(key)
       }
     })
 
     setTimeout(() => {
-      obj.bar = 2
+      obj.foo = 2
     }, 500)
   </script>
 </html>
