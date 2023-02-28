@@ -15,23 +15,24 @@
     const bucket = new WeakMap()
 
     // 原始数据
-    const data = { foo: 0, bar: 2 }
+    const data = {
+      foo: 0,
+      get bar() {
+        return this.foo
+      },
+    }
 
     // 对原始数据的代理
     const obj = new Proxy(data, {
       // 拦截读取操作
-      get(target, key) {
-        // 没有 activeEffect，直接返回属性值
-        if (!activeEffect) return target[key]
-
+      get(target, key, receiver) {
         track(target, key)
 
-        return target[key]
+        return Reflect.get(target, key, receiver)
       },
       // 拦截设置操作
-      set(target, key, newVal) {
-        // 设置属性值
-        target[key] = newVal
+      set(target, key, newVal, receiver) {
+        Reflect.set(target, key, newVal, receiver)
 
         // 取出所有 effectFn 并执行
         trigger(target, key)
@@ -64,7 +65,7 @@
       const effects = depsMap.get(key)
 
       const effectsToRun = new Set()
-      effect &&
+      effects &&
         effects.forEach((effect) => {
           if (effect !== activeEffect) {
             effectsToRun.add(effect)
@@ -231,37 +232,10 @@
 
     // ============ Testing ============
 
-    watch(
-      () => obj.foo,
-      async (newVal, oldVal, onInvalidate) => {
-        let expired = false
-        onInvalidate(() => {
-          expired = true
-        })
-
-        await new Promise((resolve) =>
-          setTimeout(resolve, 2000 - newVal * 1000)
-        )
-
-        const res = await fetch('https://api.quotable.io/random')
-          .then((res) => res.json())
-          .then((res) => res.content)
-
-        console.log(`第 ${newVal} 个请求：`, res)
-
-        if (!expired) {
-          window.finalData = res
-        }
-
-        // 最新数据应该是第二个请求的值
-        console.log('最新数据：', window.finalData)
-      }
-    )
+    effect(() => {
+      console.log(obj.bar)
+    })
 
     obj.foo++
-    setTimeout(() => {
-      console.log('数据更新了')
-      obj.foo++
-    }, 100)
   </script>
 </html>
