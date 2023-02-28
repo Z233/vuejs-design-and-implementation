@@ -20,6 +20,9 @@
     }
 
     // 对原始数据的代理
+
+    const ITERATE_KEY = Symbol()
+
     const obj = new Proxy(data, {
       // 拦截读取操作
       get(target, key, receiver) {
@@ -29,15 +32,22 @@
       },
       // 拦截设置操作
       set(target, key, newVal, receiver) {
-        Reflect.set(target, key, newVal, receiver)
+        const res = Reflect.set(target, key, newVal, receiver)
 
         // 取出所有 effectFn 并执行
         trigger(target, key)
+
+        return res
       },
 
       has(target, key) {
         track(target, key)
         return Reflect.has(target, key)
+      },
+
+      ownKeys(target) {
+        track(target, ITERATE_KEY)
+        return Reflect.ownKeys(target)
       },
     })
 
@@ -69,6 +79,14 @@
       const effectsToRun = new Set()
       effects &&
         effects.forEach((effect) => {
+          if (effect !== activeEffect) {
+            effectsToRun.add(effect)
+          }
+        })
+
+      const iterateEffects = depsMap.get(ITERATE_KEY)
+      iterateEffects &&
+        iterateEffects.forEach((effect) => {
           if (effect !== activeEffect) {
             effectsToRun.add(effect)
           }
@@ -235,12 +253,13 @@
     // ============ Testing ============
 
     effect(() => {
-      'foo' in obj
-      console.log('run effect')
+      for (const key in obj) {
+        console.log(key, obj[key])
+      }
     })
 
     setTimeout(() => {
-      obj.foo++
+      obj.bar = 2
     }, 500)
   </script>
 </html>
