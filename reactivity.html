@@ -17,6 +17,7 @@
     // 原始数据
     const data = {
       foo: 0,
+      bar: 1,
     }
 
     // 对原始数据的代理
@@ -53,6 +54,19 @@
         track(target, ITERATE_KEY)
         return Reflect.ownKeys(target)
       },
+
+      deleteProperty(target, key) {
+        const hadKey = Object.prototype.hasOwnProperty.call(
+          target,
+          key
+        )
+        const res = Reflect.deleteProperty(target, key)
+
+        // 只有当被删除的属性是对象自己的属性并且成功删除时，才触发更新
+        if (hadKey && res) trigger(target, key, TriggerType.DELETE)
+
+        return res
+      },
     })
 
     window.obj = obj
@@ -78,6 +92,7 @@
     const TriggerType = {
       SET: 'SET',
       ADD: 'ADD',
+      DELETE: 'DELETE',
     }
 
     function trigger(target, key, type) {
@@ -93,7 +108,7 @@
           }
         })
 
-      if (type === TriggerType.ADD) {
+      if (type === TriggerType.ADD || type === TriggerType.DELETE) {
         const iterateEffects = depsMap.get(ITERATE_KEY)
         iterateEffects &&
           iterateEffects.forEach((effect) => {
@@ -264,13 +279,15 @@
     // ============ Testing ============
 
     effect(() => {
+      const keys = []
       for (const key in obj) {
-        console.log(key)
+        keys.push(key)
       }
+      console.log(keys)
     })
 
     setTimeout(() => {
-      obj.foo = 2
+      delete obj.bar
     }, 500)
   </script>
 </html>
