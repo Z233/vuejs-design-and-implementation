@@ -17,9 +17,6 @@
     // 原始数据
     const data = {
       foo: 0,
-      get bar() {
-        return this.foo
-      },
     }
 
     // 对原始数据的代理
@@ -36,6 +33,11 @@
 
         // 取出所有 effectFn 并执行
         trigger(target, key)
+      },
+
+      has(target, key) {
+        track(target, key)
+        return Reflect.has(target, key)
       },
     })
 
@@ -233,9 +235,12 @@
     // ============ Testing ============
 
     effect(() => {
-      console.log(obj.bar)
+      'foo' in obj
+      console.log('run effect')
     })
 
-    obj.foo++
+    setTimeout(() => {
+      obj.foo++
+    }, 500)
   </script>
 </html>
