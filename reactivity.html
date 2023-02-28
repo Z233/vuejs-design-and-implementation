@@ -33,14 +33,20 @@
       },
       // 拦截设置操作
       set(target, key, newVal, receiver) {
+        const oldVal = target[key]
+
         const type = Object.prototype.hasOwnProperty.call(target, key)
           ? TriggerType.SET
           : TriggerType.ADD
-
         const res = Reflect.set(target, key, newVal, receiver)
 
-        // 取出所有 effectFn 并执行
-        trigger(target, key, type)
+        // 只有当新值和旧值不相等并且新值不是 NaN 时，才触发更新
+        if (
+          newVal !== oldVal &&
+          (newVal === newVal || oldVal === oldVal)
+        ) {
+          trigger(target, key, type)
+        }
 
         return res
       },
@@ -279,15 +285,10 @@
     // ============ Testing ============
 
     effect(() => {
-      const keys = []
-      for (const key in obj) {
-        keys.push(key)
-      }
-      console.log(keys)
+      console.log('=====================')
+      console.log(obj.foo)
     })
 
-    setTimeout(() => {
-      delete obj.bar
-    }, 500)
+    obj.foo = 0
   </script>
 </html>
