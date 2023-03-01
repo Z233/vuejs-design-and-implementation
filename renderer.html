@@ -13,7 +13,14 @@
       const el = createElement(vnode.type)
 
       if (vnode.children) {
-        setElementText(el, vnode.children)
+        if (typeof vnode.children === 'string') {
+          setElementText(el, vnode.children)
+        } else if (Array.isArray(vnode.children)) {
+          vnode.children.forEach((child) => {
+            // 挂载阶段不存在 oldVNode，所以传入 null
+            patch(null, child, el)
+          })
+        }
       }
 
       insert(el, container)
@@ -61,7 +68,16 @@
 
   const vnode = {
     type: 'h1',
-    children: 'Hello World',
+    children: [
+      {
+        type: 'p',
+        children: 'Hello',
+      },
+      {
+        type: 'p',
+        children: 'World',
+      },
+    ],
   }
 
   renderer.render(vnode, document.querySelector('#app'))
