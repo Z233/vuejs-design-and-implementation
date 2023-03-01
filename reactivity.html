@@ -24,7 +24,7 @@
 
     const ITERATE_KEY = Symbol()
 
-    function reactive(obj) {
+    function createReactive(obj, isShallow = false) {
       return new Proxy(obj, {
         // 拦截读取操作
         get(target, key, receiver) {
@@ -35,11 +35,16 @@
           track(target, key)
 
           const res = Reflect.get(target, key, receiver)
+
+          if (isShallow) {
+            return res
+          }
+
           if (typeof res === 'object' && res !== null) {
             return reactive(res)
           }
 
-          return Reflect.get(target, key, receiver)
+          return res
         },
         // 拦截设置操作
         set(target, key, newVal, receiver) {
@@ -88,6 +93,14 @@
           return res
         },
       })
+    }
+
+    function reactive(obj) {
+      return createReactive(obj)
+    }
+
+    function shallowReactive(obj) {
+      return createReactive(obj, true)
     }
 
     function track(target, key) {
@@ -297,13 +310,15 @@
 
     // ============ Testing ============
 
-    const obj = reactive({ foo: { bar: 1 } })
+    const obj = shallowReactive({ foo: { bar: 1 } })
 
     effect(() => {
       console.log('----------------------')
       console.log(obj.foo.bar)
     })
 
-    obj.foo.bar = 2
+    obj.foo = { bar: 2 }
+
+    obj.foo.bar = 3
   </script>
 </html>
