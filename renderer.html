@@ -6,20 +6,63 @@
 <script>
   const { effect, ref } = VueReactivity
 
-  function renderer(domString, container) {
-    container.innerHTML = domString
+  function createRenderer(options) {
+    const { createElement, setElementText, insert } = options
+
+    function mountElement(vnode, container) {
+      const el = createElement(vnode.type)
+
+      if (vnode.children) {
+        setElementText(el, vnode.children)
+      }
+
+      insert(el, container)
+    }
+
+    function patch(oldVNode, newVNode, container) {
+      if (!oldVNode) {
+        // mount 操作
+        mountElement(newVNode, container)
+      } else {
+        // update 操作
+      }
+    }
+
+    function render(vnode, container) {
+      if (vnode) {
+        // 传入了新的 vnode 时，将其与旧 vnode 一起传入 patch 函数
+        patch(container._vnode, vnode, container)
+      } else {
+        if (container._vnode) {
+          // unmount 操作，卸载旧的 vnode
+          patch(container._vnode, null, container)
+        }
+      }
+
+      container._vnode = vnode
+    }
+
+    return {
+      render,
+    }
   }
 
-  const count = ref(1)
-
-  effect(() => {
-    renderer(
-      `<h1>${count.value}</h1>`,
-      document.getElementById('app')
-    )
+  const renderer = createRenderer({
+    createElement(tag) {
+      return document.createElement(tag)
+    },
+    setElementText(el, text) {
+      el.textContent = text
+    },
+    insert(child, parent, anchor = null) {
+      parent.insertBefore(child, anchor)
+    },
   })
 
-  setInterval(() => {
-    count.value++
-  }, 1000)
+  const vnode = {
+    type: 'h1',
+    children: 'Hello World',
+  }
+
+  renderer.render(vnode, document.querySelector('#app'))
 </script>
