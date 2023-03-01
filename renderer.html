@@ -23,6 +23,27 @@
         }
       }
 
+      if (vnode.props) {
+        for (const key in vnode.props) {
+          // 检查要设置的属性是否存在于 DOM Properties 中
+          if (key in el) {
+            const type = typeof el[key]
+            const value = vnode.props[key]
+
+            // 处理 VNode 当中类似 disabled="" 这样的情况
+            if (type === 'boolean' && value.trim().length === 0) {
+              el[key] = true
+            } else {
+              el[key] = value
+            }
+          } else {
+            // 要设置的属性不在 DOM Properties 中
+            // 使用 setAttribute 设置 HTML Attributes
+            el.setAttribute(key, vnode.props[key])
+          }
+        }
+      }
+
       insert(el, container)
     }
 
@@ -72,10 +93,18 @@
       {
         type: 'p',
         children: 'Hello',
+        props: {
+          id: 'hello',
+          disabled: 'false',
+        },
       },
       {
         type: 'p',
         children: 'World',
+        props: {
+          id: 'world',
+          disabled: '',
+        },
       },
     ],
   }
