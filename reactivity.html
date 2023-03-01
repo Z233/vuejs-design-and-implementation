@@ -28,6 +28,10 @@
       return new Proxy(obj, {
         // 拦截读取操作
         get(target, key, receiver) {
+          if (key === 'raw') {
+            return target
+          }
+
           track(target, key)
 
           return Reflect.get(target, key, receiver)
@@ -44,12 +48,13 @@
             : TriggerType.ADD
           const res = Reflect.set(target, key, newVal, receiver)
 
-          // 只有当新值和旧值不相等并且新值不是 NaN 时，才触发更新
-          if (
-            newVal !== oldVal &&
-            (newVal === newVal || oldVal === oldVal)
-          ) {
-            trigger(target, key, type)
+          if (target === receiver.raw) {
+            if (
+              newVal !== oldVal &&
+              (newVal === newVal || oldVal === oldVal)
+            ) {
+              trigger(target, key, type)
+            }
           }
 
           return res
@@ -79,10 +84,6 @@
         },
       })
     }
-
-    const obj = reactive(data)
-
-    window.obj = obj
 
     function track(target, key) {
       if (!activeEffect) return
@@ -291,11 +292,18 @@
 
     // ============ Testing ============
 
+    const obj = {}
+    const proto = { bar: 1 }
+    const child = reactive(obj)
+    const parent = reactive(proto)
+
+    Object.setPrototypeOf(child, parent)
+
     effect(() => {
       console.log('=====================')
-      console.log(obj.foo)
+      console.log(child.bar)
     })
 
-    obj.foo = 0
+    child.bar = 2
   </script>
 </html>
