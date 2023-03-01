@@ -24,7 +24,14 @@
 
     const ITERATE_KEY = Symbol()
 
-    function createReactive(obj, isShallow = false) {
+    const logReadonlyWarning = (key) =>
+      console.warn(`属性 ${key} 是只读的`)
+
+    function createReactive(
+      obj,
+      isShallow = false,
+      isReadonly = false
+    ) {
       return new Proxy(obj, {
         // 拦截读取操作
         get(target, key, receiver) {
@@ -32,7 +39,9 @@
             return target
           }
 
-          track(target, key)
+          if (!isReadonly) {
+            track(target, key)
+          }
 
           const res = Reflect.get(target, key, receiver)
 
@@ -41,13 +50,18 @@
           }
 
           if (typeof res === 'object' && res !== null) {
-            return reactive(res)
+            return isReadonly ? readonly(res) : reactive(res)
           }
 
           return res
         },
         // 拦截设置操作
         set(target, key, newVal, receiver) {
+          if (isReadonly) {
+            logReadonlyWarning(key)
+            return true
+          }
+
           const oldVal = target[key]
 
           const type = Object.prototype.hasOwnProperty.call(
@@ -81,6 +95,11 @@
         },
 
         deleteProperty(target, key) {
+          if (isReadonly) {
+            logReadonlyWarning(key)
+            return true
+          }
+
           const hadKey = Object.prototype.hasOwnProperty.call(
             target,
             key
@@ -101,6 +120,14 @@
 
     function shallowReactive(obj) {
       return createReactive(obj, true)
+    }
+
+    function readonly(obj) {
+      return createReactive(obj, false, true)
+    }
+
+    function shallowReadonly(obj) {
+      return createReactive(obj, true, true)
     }
 
     function track(target, key) {
@@ -310,15 +337,14 @@
 
     // ============ Testing ============
 
-    const obj = shallowReactive({ foo: { bar: 1 } })
+    const obj = { foo: { bar: 1 } }
+    const readonlyObj = readonly(obj)
 
     effect(() => {
-      console.log('----------------------')
+      console.log('----------------')
       console.log(obj.foo.bar)
     })
 
-    obj.foo = { bar: 2 }
-
-    obj.foo.bar = 3
+    readonlyObj.foo.bar = 2
   </script>
 </html>
