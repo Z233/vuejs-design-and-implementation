@@ -34,6 +34,11 @@
 
           track(target, key)
 
+          const res = Reflect.get(target, key, receiver)
+          if (typeof res === 'object' && res !== null) {
+            return reactive(res)
+          }
+
           return Reflect.get(target, key, receiver)
         },
         // 拦截设置操作
@@ -292,18 +297,13 @@
 
     // ============ Testing ============
 
-    const obj = {}
-    const proto = { bar: 1 }
-    const child = reactive(obj)
-    const parent = reactive(proto)
-
-    Object.setPrototypeOf(child, parent)
+    const obj = reactive({ foo: { bar: 1 } })
 
     effect(() => {
-      console.log('=====================')
-      console.log(child.bar)
+      console.log('----------------------')
+      console.log(obj.foo.bar)
     })
 
-    child.bar = 2
+    obj.foo.bar = 2
   </script>
 </html>
