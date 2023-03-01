@@ -24,56 +24,63 @@
 
     const ITERATE_KEY = Symbol()
 
-    const obj = new Proxy(data, {
-      // 拦截读取操作
-      get(target, key, receiver) {
-        track(target, key)
+    function reactive(obj) {
+      return new Proxy(obj, {
+        // 拦截读取操作
+        get(target, key, receiver) {
+          track(target, key)
 
-        return Reflect.get(target, key, receiver)
-      },
-      // 拦截设置操作
-      set(target, key, newVal, receiver) {
-        const oldVal = target[key]
+          return Reflect.get(target, key, receiver)
+        },
+        // 拦截设置操作
+        set(target, key, newVal, receiver) {
+          const oldVal = target[key]
 
-        const type = Object.prototype.hasOwnProperty.call(target, key)
-          ? TriggerType.SET
-          : TriggerType.ADD
-        const res = Reflect.set(target, key, newVal, receiver)
+          const type = Object.prototype.hasOwnProperty.call(
+            target,
+            key
+          )
+            ? TriggerType.SET
+            : TriggerType.ADD
+          const res = Reflect.set(target, key, newVal, receiver)
 
-        // 只有当新值和旧值不相等并且新值不是 NaN 时，才触发更新
-        if (
-          newVal !== oldVal &&
-          (newVal === newVal || oldVal === oldVal)
-        ) {
-          trigger(target, key, type)
-        }
+          // 只有当新值和旧值不相等并且新值不是 NaN 时，才触发更新
+          if (
+            newVal !== oldVal &&
+            (newVal === newVal || oldVal === oldVal)
+          ) {
+            trigger(target, key, type)
+          }
 
-        return res
-      },
+          return res
+        },
 
-      has(target, key) {
-        track(target, key)
-        return Reflect.has(target, key)
-      },
+        has(target, key) {
+          track(target, key)
+          return Reflect.has(target, key)
+        },
 
-      ownKeys(target) {
-        track(target, ITERATE_KEY)
-        return Reflect.ownKeys(target)
-      },
+        ownKeys(target) {
+          track(target, ITERATE_KEY)
+          return Reflect.ownKeys(target)
+        },
 
-      deleteProperty(target, key) {
-        const hadKey = Object.prototype.hasOwnProperty.call(
-          target,
-          key
-        )
-        const res = Reflect.deleteProperty(target, key)
+        deleteProperty(target, key) {
+          const hadKey = Object.prototype.hasOwnProperty.call(
+            target,
+            key
+          )
+          const res = Reflect.deleteProperty(target, key)
 
-        // 只有当被删除的属性是对象自己的属性并且成功删除时，才触发更新
-        if (hadKey && res) trigger(target, key, TriggerType.DELETE)
+          // 只有当被删除的属性是对象自己的属性并且成功删除时，才触发更新
+          if (hadKey && res) trigger(target, key, TriggerType.DELETE)
 
-        return res
-      },
-    })
+          return res
+        },
+      })
+    }
+
+    const obj = reactive(data)
 
     window.obj = obj
 
