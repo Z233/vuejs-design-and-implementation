@@ -7,7 +7,8 @@
   const { effect, ref } = VueReactivity
 
   function createRenderer(options) {
-    const { createElement, setElementText, insert } = options
+    const { createElement, setElementText, insert, patchProps } =
+      options
 
     function mountElement(vnode, container) {
       const el = createElement(vnode.type)
@@ -32,23 +33,7 @@
 
       if (vnode.props) {
         for (const key in vnode.props) {
-          const value = vnode.props[key]
-
-          // 检查要设置的属性是否存在于 DOM Properties 中
-          if (shouldSetAsProps(el, key, value)) {
-            const type = typeof el[key]
-
-            // 处理 VNode 当中类似 disabled="" 这样的情况
-            if (type === 'boolean' && value.trim().length === 0) {
-              el[key] = true
-            } else {
-              el[key] = value
-            }
-          } else {
-            // 要设置的属性不在 DOM Properties 中
-            // 使用 setAttribute 设置 HTML Attributes
-            el.setAttribute(key, vnode.props[key])
-          }
+          patchProps(el, key, null, vnode.props[key])
         }
       }
 
@@ -92,6 +77,23 @@
     },
     insert(child, parent, anchor = null) {
       parent.insertBefore(child, anchor)
+    },
+    patchProps(el, key, prevValue, nextValue) {
+      // 检查要设置的属性是否存在于 DOM Properties 中
+      if (shouldSetAsProps(el, key, nextValue)) {
+        const type = typeof el[key]
+
+        // 处理 VNode 当中类似 disabled="" 这样的情况
+        if (type === 'boolean' && nextValue.trim().length === 0) {
+          el[key] = true
+        } else {
+          el[key] = nextValue
+        }
+      } else {
+        // 要设置的属性不在 DOM Properties 中
+        // 使用 setAttribute 设置 HTML Attributes
+        el.setAttribute(key, nextValue)
+      }
     },
   })
 
