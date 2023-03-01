@@ -12,6 +12,13 @@
     function mountElement(vnode, container) {
       const el = createElement(vnode.type)
 
+      function shouldSetAsProps(el, key, value) {
+        // 特殊处理，这里只列举了一种情况作为示例
+        if (key === 'form' && el.tagName === 'INPUT') return false
+
+        return key in el
+      }
+
       if (vnode.children) {
         if (typeof vnode.children === 'string') {
           setElementText(el, vnode.children)
@@ -25,10 +32,11 @@
 
       if (vnode.props) {
         for (const key in vnode.props) {
+          const value = vnode.props[key]
+
           // 检查要设置的属性是否存在于 DOM Properties 中
-          if (key in el) {
+          if (shouldSetAsProps(el, key, value)) {
             const type = typeof el[key]
-            const value = vnode.props[key]
 
             // 处理 VNode 当中类似 disabled="" 这样的情况
             if (type === 'boolean' && value.trim().length === 0) {
