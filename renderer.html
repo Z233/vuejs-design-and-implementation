@@ -96,8 +96,27 @@
       parent.insertBefore(child, anchor)
     },
     patchProps(el, key, prevValue, nextValue) {
-      // 检查要设置的属性是否存在于 DOM Properties 中
-      if (key === 'class') {
+      if (/^on\w+/.test(key)) {
+        const eventName = key.slice(2).toLowerCase()
+        let invoker = el._vei
+
+        if (nextValue) {
+          if (!invoker) {
+            invoker = el._vei = (e) => {
+              invoker.value(e)
+            }
+
+            invoker.value = nextValue
+
+            el.addEventListener(eventName, invoker)
+          } else {
+            invoker.value = nextValue
+          }
+        } else if (invoker) {
+          el.removeEventListener(eventName, invoker)
+          delete el._vei
+        }
+      } else if (key === 'class') {
         el.className = nextValue || ''
       } else if (shouldSetAsProps(el, key, nextValue)) {
         const type = typeof el[key]
@@ -143,6 +162,9 @@
         type: 'p',
         children: 'Hello',
         props: {
+          onClick: () => {
+            alert('Hello World!')
+          },
           id: 'hello',
           disabled: 'false',
           class: normalizeClass('foo bar'),
@@ -165,12 +187,8 @@
   renderer.render(vnode, document.querySelector('#app'))
 
   setTimeout(() => {
-    renderer.render(
-      {
-        ...vnode,
-        type: 'h2',
-      },
-      document.querySelector('#app')
-    )
+    renderer.render({
+      ...vnode,
+    })
   }, 1000)
 </script>
