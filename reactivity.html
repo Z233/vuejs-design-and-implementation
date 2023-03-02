@@ -39,7 +39,7 @@
             return target
           }
 
-          if (!isReadonly) {
+          if (!isReadonly && typeof key !== 'symbol') {
             track(target, key)
           }
 
@@ -92,7 +92,10 @@
         },
 
         ownKeys(target) {
-          track(target, ITERATE_KEY)
+          const iterateKey = Array.isArray(target)
+            ? 'length'
+            : ITERATE_KEY
+          track(target, iterateKey)
           return Reflect.ownKeys(target)
         },
 
@@ -361,9 +364,12 @@
 
     effect(() => {
       console.log('----------------')
-      console.log(arr[0])
+      for (const key of arr) {
+        console.log(key)
+      }
     })
 
+    arr[1] = 'bar'
     arr.length = 0
   </script>
 </html>
