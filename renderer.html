@@ -11,7 +11,7 @@
       options
 
     function mountElement(vnode, container) {
-      const el = createElement(vnode.type)
+      const el = (vnode.el = createElement(vnode.type))
 
       if (vnode.children) {
         if (typeof vnode.children === 'string') {
@@ -33,6 +33,13 @@
       insert(el, container)
     }
 
+    function unmount(vnode) {
+      // unmount 操作，卸载旧的 vnode
+      const el = vnode.el
+      const parent = el.parentNode
+      if (parent) parent.removeChild(el)
+    }
+
     function patch(oldVNode, newVNode, container) {
       if (!oldVNode) {
         // mount 操作
@@ -48,8 +55,7 @@
         patch(container._vnode, vnode, container)
       } else {
         if (container._vnode) {
-          // unmount 操作，卸载旧的 vnode
-          patch(container._vnode, null, container)
+          unmount(container._vnode)
         }
       }
 
@@ -146,4 +152,8 @@
   }
 
   renderer.render(vnode, document.querySelector('#app'))
+
+  setTimeout(() => {
+    renderer.render(null, document.querySelector('#app'))
+  }, 1000)
 </script>
