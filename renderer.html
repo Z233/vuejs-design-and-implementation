@@ -41,11 +41,22 @@
     }
 
     function patch(oldVNode, newVNode, container) {
-      if (!oldVNode) {
-        // mount 操作
-        mountElement(newVNode, container)
+      if (oldVNode && newVNode && oldVNode.type !== newVNode.type) {
+        unmount(oldVNode)
+        oldVNode = null
+      }
+
+      const { type } = newVNode
+
+      if (typeof type === 'string') {
+        // 处理普通标签
+        if (!oldVNode) {
+          mountElement(newVNode, container)
+        } else {
+        }
+      } else if (typeof type === 'object') {
+        // 处理组件类型
       } else {
-        // update 操作
       }
     }
 
@@ -154,6 +165,12 @@
   renderer.render(vnode, document.querySelector('#app'))
 
   setTimeout(() => {
-    renderer.render(null, document.querySelector('#app'))
+    renderer.render(
+      {
+        ...vnode,
+        type: 'h2',
+      },
+      document.querySelector('#app')
+    )
   }, 1000)
 </script>
