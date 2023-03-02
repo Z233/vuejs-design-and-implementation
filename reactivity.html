@@ -64,12 +64,14 @@
 
           const oldVal = target[key]
 
-          const type = Object.prototype.hasOwnProperty.call(
-            target,
-            key
-          )
+          const type = Array.isArray(target)
+            ? Number(key) < target.length
+              ? TriggerType.SET
+              : TriggerType.ADD
+            : Object.prototype.hasOwnProperty.call(target, key)
             ? TriggerType.SET
             : TriggerType.ADD
+
           const res = Reflect.set(target, key, newVal, receiver)
 
           if (target === receiver.raw) {
@@ -77,7 +79,7 @@
               newVal !== oldVal &&
               (newVal === newVal || oldVal === oldVal)
             ) {
-              trigger(target, key, type)
+              trigger(target, key, type, newVal)
             }
           }
 
@@ -154,7 +156,7 @@
       DELETE: 'DELETE',
     }
 
-    function trigger(target, key, type) {
+    function trigger(target, key, type, newVal) {
       const depsMap = bucket.get(target)
       if (!depsMap) return
       const effects = depsMap.get(key)
@@ -175,6 +177,24 @@
               effectsToRun.add(effect)
             }
           })
+      }
+
+      // 增大了 Array 的 length 属性
+      if (Array.isArray(target) && type === TriggerType.ADD) {
+        const lengthEffects = depsMap.get('length')
+        lengthEffects &&
+          lengthEffects.forEach((effect) => effectsToRun.add(effect))
+      }
+
+      // 修改了 Array 的 length 属性
+      if (Array.isArray(target) && key === 'length') {
+        depsMap.forEach((effects, key) => {
+          if (Number(key) >= newVal) {
+            effects.forEach((effect) => {
+              if (effect !== activeEffect) effectsToRun.add(effect)
+            })
+          }
+        })
       }
 
       effectsToRun.forEach((effectFn) => {
@@ -337,14 +357,13 @@
 
     // ============ Testing ============
 
-    const obj = { foo: { bar: 1 } }
-    const readonlyObj = readonly(obj)
+    const arr = reactive(['foo'])
 
     effect(() => {
       console.log('----------------')
-      console.log(obj.foo.bar)
+      console.log(arr[0])
     })
 
-    readonlyObj.foo.bar = 2
+    arr.length = 0
   </script>
 </html>
