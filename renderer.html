@@ -97,12 +97,14 @@
     },
     patchProps(el, key, prevValue, nextValue) {
       if (/^on\w+/.test(key)) {
+        const invokers = el._vei || (el._vei = {})
+        let invoker = invokers[key]
+
         const eventName = key.slice(2).toLowerCase()
-        let invoker = el._vei
 
         if (nextValue) {
           if (!invoker) {
-            invoker = el._vei = (e) => {
+            invoker = el._vei[key] = (e) => {
               invoker.value(e)
             }
 
@@ -164,6 +166,11 @@
         props: {
           onClick: () => {
             alert('Hello World!')
+          },
+          onContextmenu: (e) => {
+            e.preventDefault()
+            alert('Contextmenu')
+            return false 
           },
           id: 'hello',
           disabled: 'false',
