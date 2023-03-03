@@ -6,6 +6,7 @@
 <script>
   const Text = Symbol()
   const Comment = Symbol()
+  const Fragment = Symbol()
 
   function createRenderer(options) {
     const {
@@ -105,6 +106,11 @@
     }
 
     function unmount(vnode) {
+      if (vnode.type === Fragment) {
+        vnode.children.forEach((child) => unmount(child))
+        return
+      }
+
       // unmount 操作，卸载旧的 vnode
       const el = vnode.el
       const parent = el.parentNode
@@ -139,6 +145,17 @@
           if (newVNode.children !== oldVNode.children) {
             el.nodeValue = newVNode.children
           }
+        }
+      }
+      // 处理 Fragment
+      else if (type === Fragment) {
+        // 如果旧节点不存在，直接将新节点的 children 挂载到 container 上
+        if (!oldVNode) {
+          newVNode.children.forEach((child) => {
+            patch(null, child, container)
+          })
+        } else {
+          patchChildren(oldVNode, newVNode, container)
         }
       }
       // 处理组件类型
@@ -257,15 +274,37 @@
 
   // ------- Testing -------
 
-  const vnode = {
+  const newVnode = {
     type: 'div',
     children: [
       {
-        type: Text,
-        children: 'Hello',
+        type: Fragment,
+        children: [
+          { type: 'p', children: 'text 1' },
+          { type: 'p', children: 'text 2' },
+          { type: 'p', children: 'text 3' },
+        ],
+      },
+      { type: 'section', children: '分割线' },
+    ],
+  }
+  renderer.render(newVnode, document.querySelector('#app'))
+
+  const oldVnode = {
+    type: 'div',
+    children: [
+      {
+        type: Fragment,
+        children: [
+          { type: 'p', children: 'text 1' },
+          { type: 'p', children: 'text 2' },
+          { type: 'p', children: 'text 3' },
+          { type: 'p', children: 'text 4' },
+        ],
       },
     ],
   }
-
-  renderer.render(vnode, document.getElementById('app'))
+  setTimeout(() => {
+    renderer.render(oldVnode, document.querySelector('#app'))
+  }, 1000)
 </script>
