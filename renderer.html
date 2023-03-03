@@ -31,6 +31,71 @@
       insert(el, container)
     }
 
+    function patchElement(oldNode, newNode) {
+      const el = (newNode.el = oldNode.el)
+      const oldProps = oldNode.props || {}
+      const newProps = newNode.props || {}
+
+      // 更新 props
+      for (const key in newProps) {
+        const prev = oldProps[key]
+        const next = newProps[key]
+        if (prev !== next) {
+          patchProps(el, key, prev, next)
+        }
+      }
+
+      // 移除 props
+      for (const key in oldProps) {
+        if (!(key in newProps)) {
+          patchProps(el, key, oldProps[key], null)
+        }
+      }
+
+      // 更新 children
+      patchChildren(oldNode, newNode, el)
+    }
+
+    function patchChildren(oldNode, newNode, container) {
+      // 如果新的子节点是文本节点
+      if (typeof newNode.children === 'string') {
+        // 只有当旧节点的子节点是一组节点时，才需要将旧节点的子节点全部移除
+        if (Array.isArray(oldNode.children)) {
+          oldNode.children.forEach((child) => unmount(child))
+        }
+
+        setElementText(container, newNode.children)
+      }
+      // 如果新的子节点是一组节点
+      else if (Array.isArray(newNode.children)) {
+        // 如果旧节点的子节点是一组节点，需要 Diff
+        if (Array.isArray(oldNode.children)) {
+          // 将旧节点全部卸载
+          oldNode.children.forEach((child) => unmount(child))
+          // 将新节点全部挂载
+          newNode.children.forEach((child) =>
+            patch(null, child, container)
+          )
+        }
+        // 否则只能是字符串或者空
+        else {
+          setElementText(container, '')
+          newNode.children.forEach((child) => {
+            patch(null, child, container)
+          })
+        }
+      }
+      // 新节点不存在
+      else {
+        if (Array.isArray(oldNode.children)) {
+          oldNode.children.forEach((child) => unmount(child))
+        } else if (typeof oldNode.children === 'string') {
+          setElementText(container, '')
+        }
+        // 如果旧节点也不存在，什么都不做
+      }
+    }
+
     function unmount(vnode) {
       // unmount 操作，卸载旧的 vnode
       const el = vnode.el
@@ -51,6 +116,7 @@
         if (!oldVNode) {
           mountElement(newVNode, container)
         } else {
+          patchElement(oldVNode, newVNode)
         }
       } else if (typeof type === 'object') {
         // 处理组件类型
