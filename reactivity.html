@@ -44,6 +44,19 @@
       }
     })
 
+    let shouldTrack = true
+    ;['push', 'pop', 'shift', 'unshift', 'splice'].forEach(
+      (method) => {
+        const originMethod = Array.prototype[method]
+        arrayInstrumentations[method] = function (...args) {
+          shouldTrack = false
+          const res = originMethod.apply(this, args)
+          shouldTrack = true
+          return res
+        }
+      }
+    )
+
     function createReactive(
       obj,
       isShallow = false,
@@ -169,7 +182,7 @@
     }
 
     function track(target, key) {
-      if (!activeEffect) return
+      if (!activeEffect || !shouldTrack) return
 
       let depsMap = bucket.get(target)
       if (!depsMap) {
@@ -393,14 +406,16 @@
 
     // ============ Testing ============
 
-    const obj = {}
-    const arr = reactive([obj])
+    const arr = reactive([])
 
-    console.log(arr.includes(obj))
+    effect(() => {
+      console.log('----------------')
+      arr.push(1)
+    })
 
-    // effect(() => {
-    //   console.log('----------------')
-    //   console.log(arr.includes('bar'))
-    // })
+    effect(() => {
+      console.log('----------------')
+      arr.push(2)
+    })
   </script>
 </html>
