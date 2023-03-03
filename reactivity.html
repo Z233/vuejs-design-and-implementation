@@ -27,6 +27,23 @@
     const logReadonlyWarning = (key) =>
       console.warn(`属性 ${key} 是只读的`)
 
+    const arrayInstrumentations = {}
+
+    ;['includes', 'indexOf', 'lastIndexOf'].forEach((method) => {
+      const originMethod = Array.prototype[method]
+      arrayInstrumentations[method] = function (...args) {
+        // this 是代理对象，先在代理对象上查找，如果没有再在原始对象上查找
+        let res = originMethod.apply(this, args)
+
+        if (res === false) {
+          // res 为 false 时，说明在代理对象上没有找到，再在原始对象上查找
+          res = originMethod.apply(this.raw, args)
+        }
+
+        return res
+      }
+    })
+
     function createReactive(
       obj,
       isShallow = false,
@@ -37,6 +54,13 @@
         get(target, key, receiver) {
           if (key === 'raw') {
             return target
+          }
+
+          if (
+            Array.isArray(target) &&
+            arrayInstrumentations.hasOwnProperty(key)
+          ) {
+            return Reflect.get(arrayInstrumentations, key, receiver)
           }
 
           if (!isReadonly && typeof key !== 'symbol') {
@@ -119,8 +143,17 @@
       })
     }
 
+    const reactiveMap = new Map()
+
     function reactive(obj) {
-      return createReactive(obj)
+      const existingProxy = reactiveMap.get(obj)
+      if (existingProxy) return existingProxy
+
+      const proxy = createReactive(obj)
+      // 存储代理对象，防止重复代理
+      reactiveMap.set(obj, proxy)
+
+      return proxy
     }
 
     function shallowReactive(obj) {
@@ -360,16 +393,14 @@
 
     // ============ Testing ============
 
-    const arr = reactive(['foo'])
+    const obj = {}
+    const arr = reactive([obj])
 
-    effect(() => {
-      console.log('----------------')
-      for (const key of arr) {
-        console.log(key)
-      }
-    })
+    console.log(arr.includes(obj))
 
-    arr[1] = 'bar'
-    arr.length = 0
+    // effect(() => {
+    //   console.log('----------------')
+    //   console.log(arr.includes('bar'))
+    // })
   </script>
 </html>
