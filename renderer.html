@@ -79,12 +79,32 @@
       else if (Array.isArray(newNode.children)) {
         // 如果旧节点的子节点是一组节点，需要 Diff
         if (Array.isArray(oldNode.children)) {
-          // 将旧节点全部卸载
-          oldNode.children.forEach((child) => unmount(child))
-          // 将新节点全部挂载
-          newNode.children.forEach((child) =>
-            patch(null, child, container)
-          )
+          const oldChildren = oldNode.children
+          const newChildren = newNode.children
+
+          let idx = 0
+          while (
+            idx < Math.min(oldChildren.length, newChildren.length)
+          ) {
+            const oldChild = oldChildren[idx]
+            const newChild = newChildren[idx]
+            patch(oldChild, newChild, container)
+            idx++
+          }
+
+          // 如果新的子节点比旧的子节点多，需要将多出来的子节点挂载到 container 上
+          if (idx < newChildren.length) {
+            newChildren.slice(idx).forEach((child) => {
+              patch(null, child, container)
+            })
+          }
+
+          // 如果旧的子节点比新的子节点多，需要将多出来的子节点移除
+          if (idx < oldChildren.length) {
+            oldChildren.slice(idx).forEach((child) => {
+              unmount(child)
+            })
+          }
         }
         // 否则只能是字符串或者空
         else {
@@ -277,15 +297,9 @@
   const newVnode = {
     type: 'div',
     children: [
-      {
-        type: Fragment,
-        children: [
-          { type: 'p', children: 'text 1' },
-          { type: 'p', children: 'text 2' },
-          { type: 'p', children: 'text 3' },
-        ],
-      },
-      { type: 'section', children: '分割线' },
+      { type: 'p', children: '1' },
+      { type: 'p', children: '2' },
+      // { type: 'p', children: '3' },
     ],
   }
   renderer.render(newVnode, document.querySelector('#app'))
@@ -293,18 +307,14 @@
   const oldVnode = {
     type: 'div',
     children: [
-      {
-        type: Fragment,
-        children: [
-          { type: 'p', children: 'text 1' },
-          { type: 'p', children: 'text 2' },
-          { type: 'p', children: 'text 3' },
-          { type: 'p', children: 'text 4' },
-        ],
-      },
+      { type: 'p', children: '4' },
+      { type: 'p', children: '5' },
+      { type: 'p', children: '6' },
     ],
   }
+
   setTimeout(() => {
+    console.log('update')
     renderer.render(oldVnode, document.querySelector('#app'))
-  }, 1000)
+  }, 400)
 </script>
