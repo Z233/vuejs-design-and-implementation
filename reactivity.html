@@ -58,6 +58,36 @@
     )
 
     const mutableInstrumentations = {
+      get(key) {
+        const target = this.raw
+        const had = target.has(key)
+
+        // 建立响应式联系
+        track(target, key)
+
+        // 如果结果是可代理的，返回代理对象
+        if (had) {
+          const res = target.get(key)
+          return typeof res === 'object' ? reactive(res) : res
+        }
+      },
+      set(key, value) {
+        const target = this.raw
+        const had = target.has(key)
+        const oldValue = target.get(key)
+        const res = target.set(key, value)
+
+        if (!had) {
+          trigger(target, key, TriggerType.ADD, value)
+        } else if (
+          value !== oldValue &&
+          (value === value || oldValue === oldValue)
+        ) {
+          trigger(target, key, TriggerType.SET, value)
+        }
+
+        return res
+      },
       add(key) {
         const target = this.raw
         const hadKey = target.has(key)
@@ -97,7 +127,9 @@
           }
 
           if (
-            Object.prototype.toString.call(target) === '[object Set]'
+            Object.prototype.toString.call(target) ===
+              '[object Set]' ||
+            Object.prototype.toString.call(target) === '[object Map]'
           ) {
             if (key === 'size') {
               // 建立响应式联系
@@ -446,14 +478,13 @@
 
     // ============ Testing ============
 
-    const s = reactive(new Set([1, 2, 3]))
+    const p = reactive(new Map([['key', 1]]))
 
     effect(() => {
       console.log('---------------')
-      console.log(s.size)
+      console.log(p.get('key'))
     })
 
-    s.add(4)
-    s.delete(1)
+    p.set('key', 2)
   </script>
 </html>
