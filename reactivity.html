@@ -57,6 +57,33 @@
       }
     )
 
+    const mutableInstrumentations = {
+      add(key) {
+        const target = this.raw
+        const hadKey = target.has(key)
+        const res = target.add(key)
+
+        // 如果 Set 中没有该属性，触发响应
+        if (!hadKey) {
+          trigger(target, key, TriggerType.ADD)
+        }
+
+        return res
+      },
+      delete(key) {
+        const target = this.raw
+        const hadKey = target.has(key)
+        const res = target.delete(key)
+
+        // 如果 Set 中有该属性，触发响应
+        if (hadKey) {
+          trigger(target, key, TriggerType.DELETE)
+        }
+
+        return res
+      },
+    }
+
     function createReactive(
       obj,
       isShallow = false,
@@ -73,11 +100,13 @@
             Object.prototype.toString.call(target) === '[object Set]'
           ) {
             if (key === 'size') {
+              // 建立响应式联系
+              track(target, ITERATE_KEY)
               // 使 this 指向原始对象，进而访问 Set 的 [[SetData]] 内部槽
               return Reflect.get(target, key, target)
             }
-            // 将原始方法绑定到原始对象上，使 this 始终指向原始对象
-            return target[key].bind(target)
+            // 使用自定义 Set 方法
+            return mutableInstrumentations[key]
           }
 
           if (
@@ -418,12 +447,13 @@
     // ============ Testing ============
 
     const s = reactive(new Set([1, 2, 3]))
-    
+
     effect(() => {
       console.log('---------------')
       console.log(s.size)
     })
 
     s.add(4)
+    s.delete(1)
   </script>
 </html>
