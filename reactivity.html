@@ -75,7 +75,9 @@
         const target = this.raw
         const had = target.has(key)
         const oldValue = target.get(key)
-        const res = target.set(key, value)
+
+        const rawValue = value.raw || value
+        const res = target.set(key, rawValue)
 
         if (!had) {
           trigger(target, key, TriggerType.ADD, value)
@@ -478,13 +480,15 @@
 
     // ============ Testing ============
 
-    const p = reactive(new Map([['key', 1]]))
+    const m = new Map()
+    const p1 = reactive(m)
+    const p2 = reactive(new Map())
+    p1.set('p2', p2)
 
     effect(() => {
-      console.log('---------------')
-      console.log(p.get('key'))
+      console.log(m.get('p2').size)
     })
 
-    p.set('key', 2)
+    m.get('p2').set('foo', 1)
   </script>
 </html>
