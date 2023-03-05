@@ -128,6 +128,17 @@
               patch(null, newVNode, container, anchor)
             }
           }
+
+          // 移除旧节点
+          for (let i = 0; i < oldChildren.length; i++) {
+            const oldVNode = oldChildren[i]
+            const has = newChildren.find(
+              (newVNode) => newVNode.key === oldVNode.key
+            )
+            if (!has) {
+              unmount(oldVNode)
+            }
+          }
         }
         // 否则只能是字符串或者空
         else {
@@ -330,8 +341,6 @@
   const VNode2 = {
     type: 'div',
     children: [
-      { type: 'p', children: '4', key: 4 },
-      { type: 'p', children: 'world', key: 3 },
       { type: 'p', children: '1', key: 1 },
       { type: 'p', children: '2', key: 2 },
     ],
