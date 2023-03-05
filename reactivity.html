@@ -114,6 +114,18 @@
 
         return res
       },
+      forEach(callback, self) {
+        const wrap = (value) =>
+          typeof value === 'object' ? reactive(value) : value
+        const target = this.raw
+
+        track(target, ITERATE_KEY)
+
+        return target.forEach((value, key) => {
+          // 通过 call 绑定 forEach 的第二个参数
+          callback.call(self, wrap(value), wrap(key), this)
+        })
+      },
     }
 
     function createReactive(
@@ -292,7 +304,12 @@
           }
         })
 
-      if (type === TriggerType.ADD || type === TriggerType.DELETE) {
+      if (
+        type === TriggerType.ADD ||
+        type === TriggerType.DELETE ||
+        (type === 'SET' &&
+          Object.prototype.toString.call(target) === '[object Map]')
+      ) {
         const iterateEffects = depsMap.get(ITERATE_KEY)
         iterateEffects &&
           iterateEffects.forEach((effect) => {
@@ -480,15 +497,16 @@
 
     // ============ Testing ============
 
-    const m = new Map()
-    const p1 = reactive(m)
-    const p2 = reactive(new Map())
-    p1.set('p2', p2)
+    const key = { key: 1 }
+    const value = new Set([1, 2, 3])
+    const p = reactive(new Map([[key, value]]))
 
     effect(() => {
-      console.log(m.get('p2').size)
+      p.forEach(function (value, key) {
+        console.log(value.size) // 3
+      })
     })
 
-    m.get('p2').set('foo', 1)
+    p.get(key).delete(1)
   </script>
 </html>
