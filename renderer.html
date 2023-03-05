@@ -17,7 +17,7 @@
       createTextNode,
     } = options
 
-    function mountElement(vnode, container) {
+    function mountElement(vnode, container, anchor) {
       const el = (vnode.el = createElement(vnode.type))
 
       if (vnode.children) {
@@ -37,7 +37,7 @@
         }
       }
 
-      insert(el, container)
+      insert(el, container, anchor)
     }
 
     function patchElement(oldNode, newNode) {
@@ -87,10 +87,12 @@
           // 遍历新的子节点，判断是否存在相同的 key
           for (let i = 0; i < newChildren.length; i++) {
             const newVNode = newChildren[i]
+            let found = false
             for (let j = 0; j < oldChildren.length; j++) {
               const oldVNode = oldChildren[j]
               // 如果 key 相同，说明可以复用
               if (newVNode.key === oldVNode.key) {
+                found = true
                 patch(oldVNode, newVNode, container)
                 // 判断是否需要移动节点
                 if (j < lastIndex) {
@@ -110,6 +112,20 @@
                 }
                 break
               }
+            }
+
+            // 如果没有找到相同 key 的节点，说明是 newVNode 新节点
+            if (!found) {
+              const prevNode = newChildren[i - 1]
+              let anchor = null
+              if (prevNode) {
+                anchor = prevNode.el.nextSibling
+              } else {
+                // newVNode 为第一个节点
+                anchor = container.firstChild
+              }
+              // 挂载新节点
+              patch(null, newVNode, container, anchor)
             }
           }
         }
@@ -144,7 +160,7 @@
       if (parent) parent.removeChild(el)
     }
 
-    function patch(oldVNode, newVNode, container) {
+    function patch(oldVNode, newVNode, container, anchor) {
       if (oldVNode && newVNode && oldVNode.type !== newVNode.type) {
         unmount(oldVNode)
         oldVNode = null
@@ -155,7 +171,7 @@
       // 处理普通标签
       if (typeof type === 'string') {
         if (!oldVNode) {
-          mountElement(newVNode, container)
+          mountElement(newVNode, container, anchor)
         } else {
           patchElement(oldVNode, newVNode)
         }
@@ -301,7 +317,7 @@
 
   // ------- Testing -------
 
-  const oldVnode = {
+  const VNode1 = {
     type: 'div',
     children: [
       { type: 'p', children: '1', key: 1 },
@@ -309,11 +325,12 @@
       { type: 'p', children: 'hello', key: 3 },
     ],
   }
-  renderer.render(oldVnode, document.querySelector('#app'))
+  renderer.render(VNode1, document.querySelector('#app'))
 
-  const newVnode = {
+  const VNode2 = {
     type: 'div',
     children: [
+      { type: 'p', children: '4', key: 4 },
       { type: 'p', children: 'world', key: 3 },
       { type: 'p', children: '1', key: 1 },
       { type: 'p', children: '2', key: 2 },
@@ -322,6 +339,6 @@
 
   setTimeout(() => {
     console.log('update')
-    renderer.render(newVnode, document.querySelector('#app'))
+    renderer.render(VNode2, document.querySelector('#app'))
   }, 400)
 </script>
