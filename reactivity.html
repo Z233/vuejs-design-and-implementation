@@ -255,6 +255,20 @@
       return proxy
     }
 
+    function ref(val) {
+      const wrapper = {
+        value: val,
+      }
+
+      // 定义一个不可枚举的属性
+      // 对于未定义的 descriptor，Object.defineProperty() 会默认使用 false
+      Object.defineProperty(wrapper, '__v_isRef', {
+        value: true,
+      })
+
+      return reactive(wrapper)
+    }
+
     function shallowReactive(obj) {
       return createReactive(obj, true)
     }
@@ -497,16 +511,12 @@
 
     // ============ Testing ============
 
-    const key = { key: 1 }
-    const value = new Set([1, 2, 3])
-    const p = reactive(new Map([[key, value]]))
+    const refVal = ref(1)
 
     effect(() => {
-      p.forEach(function (value, key) {
-        console.log(value.size) // 3
-      })
+      console.log(refVal.value)
     })
 
-    p.get(key).delete(1)
+    refVal.value = 2
   </script>
 </html>
