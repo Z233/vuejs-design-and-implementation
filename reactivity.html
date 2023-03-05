@@ -269,6 +269,31 @@
       return reactive(wrapper)
     }
 
+    function toRef(obj, key) {
+      const wrapper = {
+        get value() {
+          return obj[key]
+        },
+        set value(newVal) {
+          obj[key] = newVal
+        },
+      }
+
+      Object.defineProperty(wrapper, '__v_isRef', {
+        value: true,
+      })
+
+      return wrapper
+    }
+
+    function toRefs(obj) {
+      const res = {}
+      for (const key in obj) {
+        res[key] = toRef(obj, key)
+      }
+      return res
+    }
+
     function shallowReactive(obj) {
       return createReactive(obj, true)
     }
@@ -511,12 +536,20 @@
 
     // ============ Testing ============
 
-    const refVal = ref(1)
+    // obj 是响应式数据
+    const obj = reactive({ foo: 1, bar: 2 })
+
+    // 将响应式数据展开到一个新的对象 newObj
+    const newObj = {
+      ...toRefs(obj),
+    }
 
     effect(() => {
-      console.log(refVal.value)
+      // 在副作用函数内通过新的对象 newObj 读取 foo 属性值
+      console.log(newObj.foo.value)
     })
 
-    refVal.value = 2
+    // 很显然，此时修改 obj.foo 并不会触发响应
+    obj.foo = 100
   </script>
 </html>
