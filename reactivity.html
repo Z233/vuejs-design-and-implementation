@@ -294,6 +294,23 @@
       return res
     }
 
+    function proxyRefs(target) {
+      return new Proxy(target, {
+        get(target, key, receiver) {
+          const value = Reflect.get(target, key, receiver)
+          return value.__v_isRef ? value.value : value
+        },
+        set(target, key, newVal, receiver) {
+          const value = value[key]
+          if (value.__v_isRef) {
+            value.value = newVal
+            return true
+          }
+          return Reflect.set(target, key, newVal, receiver)
+        },
+      })
+    }
+
     function shallowReactive(obj) {
       return createReactive(obj, true)
     }
@@ -536,20 +553,17 @@
 
     // ============ Testing ============
 
-    // obj 是响应式数据
     const obj = reactive({ foo: 1, bar: 2 })
+    obj.foo // 1
+    obj.bar // 2
 
-    // 将响应式数据展开到一个新的对象 newObj
-    const newObj = {
-      ...toRefs(obj),
-    }
+    const newObj = proxyRefs({ ...toRefs(obj) })
 
-    effect(() => {
-      // 在副作用函数内通过新的对象 newObj 读取 foo 属性值
-      console.log(newObj.foo.value)
-    })
+    console.log(newObj.foo)
 
-    // 很显然，此时修改 obj.foo 并不会触发响应
-    obj.foo = 100
+    newObj.bar = 199
+
+    console.log(newObj.bar)
+    console.log(obj.bar)
   </script>
 </html>
