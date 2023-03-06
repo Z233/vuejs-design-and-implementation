@@ -119,7 +119,12 @@
         oldStartIndex < oldEndIndex &&
         newStartIndex < newEndIndex
       ) {
-        if (newStartVNode.key === oldStartVNode.key) {
+        if (!oldStartVNode) {
+          // oldStartVNode 已经被处理过了，直接跳过
+          oldStartVNode = oldChildren[++oldStartIndex]
+        } else if (!oldEndVNode) {
+          oldEndVNode = oldChildren[--oldEndIndex]
+        } else if (newStartVNode.key === oldStartVNode.key) {
           patch(oldStartVNode, newStartVNode, container)
           newStartVNode = newChildren[++newStartIndex]
           oldStartVNode = oldChildren[++oldStartIndex]
@@ -144,6 +149,22 @@
           // 更新索引值
           newStartVNode = newChildren[++newStartIndex]
           oldEndVNode = oldChildren[--oldEndIndex]
+        } else {
+          // 尝试在 oldChildren 当中找到 newStartVNode 对应的节点
+          const oldIndex = oldChildren.findIndex(
+            (child) => child.key === newStartVNode.key
+          )
+          // 找到之后移动节点
+          if (oldIndex > 0) {
+            const oldVNodeToMove = oldChildren[oldIndex]
+            patch(oldVNodeToMove, newStartVNode, container)
+            insert(oldVNodeToMove.el, container, oldStartVNode.el)
+
+            // 将 oldChildren 中对应的节点设置为 undefined
+            oldChildren[oldIndex] = undefined
+          }
+
+          newStartVNode = newChildren[++newStartIndex]
         }
       }
     }
@@ -331,8 +352,8 @@
   const VNode2 = {
     type: 'div',
     children: [
-      { type: 'p', children: '4', key: 4 },
       { type: 'p', children: '2', key: 2 },
+      { type: 'p', children: '4', key: 4 },
       { type: 'p', children: '1', key: 1 },
       { type: 'p', children: '3', key: 3 },
     ],
