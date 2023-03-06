@@ -116,8 +116,8 @@
       let newEndVNode = newChildren[newEndIndex]
 
       while (
-        oldStartIndex < oldEndIndex &&
-        newStartIndex < newEndIndex
+        oldStartIndex <= oldEndIndex &&
+        newStartIndex <= newEndIndex
       ) {
         if (!oldStartVNode) {
           // oldStartVNode 已经被处理过了，直接跳过
@@ -162,9 +162,27 @@
 
             // 将 oldChildren 中对应的节点设置为 undefined
             oldChildren[oldIndex] = undefined
+          } else {
+            // 找不到，直接挂载
+            patch(null, newStartVNode, container, oldStartVNode.el)
           }
 
           newStartVNode = newChildren[++newStartIndex]
+        }
+      }
+
+      if (
+        oldEndIndex < oldStartIndex &&
+        newStartIndex <= newEndIndex
+      ) {
+        // 新节点还有剩余
+        while (newStartIndex <= newEndIndex) {
+          patch(
+            null,
+            newChildren[newStartIndex++],
+            container,
+            oldStartVNode.el
+          )
         }
       }
     }
@@ -344,7 +362,6 @@
       { type: 'p', children: '1', key: 1 },
       { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '3', key: 3 },
-      { type: 'p', children: '4', key: 4 },
     ],
   }
   renderer.render(VNode1, document.querySelector('#app'))
@@ -352,9 +369,9 @@
   const VNode2 = {
     type: 'div',
     children: [
-      { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '4', key: 4 },
       { type: 'p', children: '1', key: 1 },
+      { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '3', key: 3 },
     ],
   }
