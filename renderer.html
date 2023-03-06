@@ -232,8 +232,6 @@
         newVNode = newChildren[newEndIndex]
       }
 
-      console.log({ startIndex, oldEndIndex, newEndIndex })
-
       // 判断是否有剩余节点
       if (
         startIndex > oldEndIndex && // 新节点的数量大于旧节点的数量
@@ -258,6 +256,54 @@
         while (i <= oldEndIndex) {
           unmount(oldChildren[i++])
         }
+      } else {
+        // 新节点和旧节点都没有处理完，需要移动节点
+        const leftNewNodeCount = newEndIndex - startIndex + 1
+        // 新节点对对应旧节点下标的映射
+        const source = Array.from({
+          length: leftNewNodeCount,
+        }).fill(-1)
+
+        // 是否需要移动节点
+        let willMove = false
+        // 最大索引值，当遍历到的新节点的索引小于最大索引值时，说明需要移动节点
+        let maxIndex = 0
+        // 已经更新过的节点数量
+        // 如果大于需要更新的新节点的数量，说明剩余的旧节点都需要卸载
+        let patchedCount = 0
+
+        const keyIndex = {}
+        for (let i = startIndex; i <= newEndIndex; i++) {
+          keyIndex[newChildren[i].key] = i
+        }
+
+        for (let i = startIndex; i <= oldEndIndex; i++) {
+          const oldVNode = oldChildren[i]
+
+          if (patchedCount <= leftNewNodeCount) {
+            const newVNodeIndex = keyIndex[oldVNode.key]
+            if (typeof newVNodeIndex !== 'undefined') {
+              // 找到了对应的节点
+              patch(oldVNode, newChildren[newVNodeIndex], container)
+              patchedCount++
+              source[newVNodeIndex - startIndex] = i
+              // 判断是否需要移动节点
+              if (newVNodeIndex < maxIndex) {
+                willMove = true
+              } else {
+                maxIndex = newVNodeIndex
+              }
+            } else {
+              // 没有找到对应的节点，直接卸载
+              unmount(oldVNode)
+            }
+          } else {
+            // 剩余的旧节点都需要卸载
+            unmount(oldVNode)
+          }
+        }
+
+        console.log(source)
       }
     }
 
@@ -434,7 +480,11 @@
     type: 'div',
     children: [
       { type: 'p', children: '1', key: 1 },
+      { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '3', key: 3 },
+      { type: 'p', children: '4', key: 4 },
+      { type: 'p', children: '6', key: 6 },
+      { type: 'p', children: '5', key: 5 },
     ],
   }
   renderer.render(VNode1, document.querySelector('#app'))
@@ -443,8 +493,11 @@
     type: 'div',
     children: [
       { type: 'p', children: '1', key: 1 },
-      { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '3', key: 3 },
+      { type: 'p', children: '4', key: 4 },
+      { type: 'p', children: '2', key: 2 },
+      { type: 'p', children: '7', key: 7 },
+      { type: 'p', children: '5', key: 5 },
     ],
   }
 
