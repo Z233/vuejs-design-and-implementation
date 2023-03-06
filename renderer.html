@@ -79,7 +79,7 @@
       else if (Array.isArray(newNode.children)) {
         // 如果旧节点的子节点是一组节点，需要 Diff
         if (Array.isArray(oldNode.children)) {
-          patchKeyedChildren(oldNode, newNode, container)
+          fastPatchKeyedChildren(oldNode, newNode, container)
         }
         // 否则只能是字符串或者空
         else {
@@ -101,7 +101,11 @@
     }
 
     // 双端 Diff
-    function patchKeyedChildren(oldNode, newNode, container) {
+    function doubleEndedPatchKeyedChildren(
+      oldNode,
+      newNode,
+      container
+    ) {
       const oldChildren = oldNode.children
       const newChildren = newNode.children
 
@@ -191,6 +195,68 @@
         // 旧节点还有剩余，需要卸载
         while (oldStartIndex <= oldEndIndex) {
           unmount(oldChildren[oldStartIndex++])
+        }
+      }
+    }
+
+    // 快速 Diff
+    function fastPatchKeyedChildren(oldNode, newNode, container) {
+      const oldChildren = oldNode.children
+      const newChildren = newNode.children
+
+      let startIndex = 0
+      let oldVNode = oldChildren[startIndex]
+      let newVNode = newChildren[startIndex]
+
+      // 处理前置节点
+      while (oldVNode.key === newVNode.key) {
+        patch(oldVNode, newVNode, container)
+
+        startIndex++
+        oldVNode = oldChildren[startIndex]
+        newVNode = newChildren[startIndex]
+      }
+
+      // 处理后置节点
+      let oldEndIndex = oldChildren.length - 1
+      let newEndIndex = newChildren.length - 1
+      oldVNode = oldChildren[oldEndIndex]
+      newVNode = newChildren[newEndIndex]
+
+      while (oldVNode.key === newVNode.key) {
+        patch(oldVNode, newVNode, container)
+
+        oldEndIndex--
+        newEndIndex--
+        oldVNode = oldChildren[oldEndIndex]
+        newVNode = newChildren[newEndIndex]
+      }
+
+      console.log({ startIndex, oldEndIndex, newEndIndex })
+
+      // 判断是否有剩余节点
+      if (
+        startIndex > oldEndIndex && // 新节点的数量大于旧节点的数量
+        startIndex <= newEndIndex // 新节点还有剩余
+      ) {
+        // 处理剩余的新节点
+        const anchorIndex = newEndIndex + 1
+        const anchor =
+          anchorIndex < newChildren.length
+            ? newChildren[anchorIndex].el
+            : null
+
+        let i = startIndex
+        while (i <= newEndIndex) {
+          patch(null, newChildren[i++], container, anchor)
+        }
+      } else if (
+        startIndex > newEndIndex && // 旧节点的数量大于新节点的数量
+        startIndex <= oldEndIndex // 旧节点还有剩余
+      ) {
+        let i = startIndex
+        while (i <= oldEndIndex) {
+          unmount(oldChildren[i++])
         }
       }
     }
@@ -368,7 +434,6 @@
     type: 'div',
     children: [
       { type: 'p', children: '1', key: 1 },
-      { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '3', key: 3 },
     ],
   }
@@ -378,6 +443,7 @@
     type: 'div',
     children: [
       { type: 'p', children: '1', key: 1 },
+      { type: 'p', children: '2', key: 2 },
       { type: 'p', children: '3', key: 3 },
     ],
   }
