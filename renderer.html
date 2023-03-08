@@ -303,6 +303,51 @@
           }
         }
 
+        if (willMove) {
+          // 移动节点
+          const seq = lis(source)
+
+          let seqLastIndex = seq.length - 1
+          let newNodeLastIndex = leftNewNodeCount - 1
+
+          while (newNodeLastIndex >= 0) {
+            if (source[newNodeLastIndex] === -1) {
+              // 没有对应位置，说明是全新的节点，挂载新节点
+              // 该节点在 newChildren 当中的真实索引
+              const realIndex = newNodeLastIndex + startIndex
+              const newVNode = newChildren[realIndex]
+              // 该节点的下一个节点的真实索引
+              const nextRealIndex = realIndex + 1
+
+              const anchor =
+                nextRealIndex < newChildren.length
+                  ? newChildren[nextRealIndex].el
+                  : null
+
+              patch(null, newVNode, container, anchor)
+            } else if (newNodeLastIndex !== seq[seqLastIndex]) {
+              // 需要移动
+              // 该节点在 newChildren 当中的真实索引
+              const realIndex = newNodeLastIndex + startIndex
+              const newVNode = newChildren[realIndex]
+              // 该节点的下一个节点的真实索引
+              const nextRealIndex = realIndex + 1
+
+              const anchor =
+                nextRealIndex < newChildren.length
+                  ? newChildren[nextRealIndex].el
+                  : null
+
+              insert(newVNode.el, container, anchor)
+            } else if (newNodeLastIndex === seq[seqLastIndex]) {
+              // 在递增子序列中，不需要移动
+              seqLastIndex--
+            }
+
+            newNodeLastIndex--
+          }
+        }
+
         console.log(source)
       }
     }
@@ -472,6 +517,48 @@
     }
 
     return res.trim()
+  }
+
+  // 求解最长递增子序列
+  function lis(arr) {
+    const p = arr.slice()
+    const result = [0]
+    let i, j, u, v, c
+    const len = arr.length
+    for (i = 0; i < len; i++) {
+      const arrI = arr[i]
+      if (arrI !== 0) {
+        j = result[result.length - 1]
+        if (arr[j] < arrI) {
+          p[i] = j
+          result.push(i)
+          continue
+        }
+        u = 0
+        v = result.length - 1
+        while (u < v) {
+          c = ((u + v) / 2) | 0
+          if (arr[result[c]] < arrI) {
+            u = c + 1
+          } else {
+            v = c
+          }
+        }
+        if (arrI < arr[result[u]]) {
+          if (u > 0) {
+            p[i] = result[u - 1]
+          }
+          result[u] = i
+        }
+      }
+    }
+    u = result.length
+    v = result[u - 1]
+    while (u-- > 0) {
+      result[u] = v
+      v = p[v]
+    }
+    return result
   }
 
   // ------- Testing -------
