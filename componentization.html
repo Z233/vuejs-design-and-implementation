@@ -10,6 +10,32 @@
   const Comment = Symbol()
   const Fragment = Symbol()
 
+  // 任务缓存队列
+  const queue = new Set()
+  // 是否正在刷新任务队列
+  let isFlushing = false
+  // 立刻 resolve 的 Promise 实例
+  const p = Promise.resolve()
+
+  function queueJob(job) {
+    queue.add(job)
+    // 刷新任务队列
+    if (!isFlushing) {
+      isFlushing = true
+      // 在微任务队列当中刷新缓存队列
+      p.then(() => {
+        try {
+          // 执行缓存队列中的任务
+          queue.forEach((job) => job())
+        } finally {
+          // 重置状态
+          isFlushing = false
+          queue.clear()
+        }
+      })
+    }
+  }
+
   function createRenderer(options) {
     const {
       createElement,
@@ -74,11 +100,18 @@
       const state = reactive(data())
 
       // 使用 effect 包裹 render 函数，追踪响应式数据的变化
-      effect(() => {
-        // 将 render 函数当中的 this 硬绑定为 state
-        const subTree = render.call(state, state)
-        patch(null, subTree, container, anchor)
-      })
+      effect(
+        () => {
+          // 将 render 函数当中的 this 硬绑定为 state
+          const subTree = render.call(state, state)
+          // TODO: 每次发生更新时都会重新挂载，需要优化
+          patch(null, subTree, container, anchor)
+        },
+        {
+          // 缓存队列，避免多次副作用执行带来的性能问题
+          scheduler: queueJob,
+        }
+      )
     }
 
     function patchComponent(oldNode, newNode, anchor) {}
