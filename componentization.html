@@ -4,6 +4,8 @@
 
 <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
 <script>
+  const { reactive, effect } = VueReactivity
+
   const Text = Symbol()
   const Comment = Symbol()
   const Fragment = Symbol()
@@ -67,9 +69,16 @@
 
     function mountComponent(vnode, container, anchor) {
       const componentOptions = vnode.type
-      const { render } = componentOptions
-      const subTree = render()
-      patch(null, subTree, container, anchor)
+      const { render, data } = componentOptions
+
+      const state = reactive(data())
+
+      // 使用 effect 包裹 render 函数，追踪响应式数据的变化
+      effect(() => {
+        // 将 render 函数当中的 this 硬绑定为 state
+        const subTree = render.call(state, state)
+        patch(null, subTree, container, anchor)
+      })
     }
 
     function patchComponent(oldNode, newNode, anchor) {}
@@ -481,10 +490,15 @@
 
   const MyComponent = {
     name: 'MyComponent',
+    data() {
+      return {
+        foo: `I'am text from data`,
+      }
+    },
     render() {
       return {
         type: 'div',
-        children: '我是文本内容',
+        children: `我是文本内容：${this.foo}`,
       }
     },
   }
