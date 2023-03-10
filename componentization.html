@@ -4,7 +4,7 @@
 
 <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
 <script>
-  const { reactive, effect } = VueReactivity
+  const { reactive, effect, shallowReactive } = VueReactivity
 
   const Text = Symbol()
   const Comment = Symbol()
@@ -34,6 +34,23 @@
         }
       })
     }
+  }
+
+  function resolveProps(propsOption, propsData) {
+    const props = {}
+    const attrs = {}
+
+    // 将在 propsOption 当中定义的属性，从 propsData 中提取出来
+    // 如果没有在 propsOption 当中定义的属性，当作 attrs 处理
+    for (const key in propsData) {
+      if (key in propsOption) {
+        props[key] = propsData[key]
+      } else {
+        attrs[key] = propsData[key]
+      }
+    }
+
+    return [props, attrs]
   }
 
   function createRenderer(options) {
@@ -98,6 +115,7 @@
       const {
         render,
         data,
+        props: propsOption,
         beforeCreate,
         created,
         beforeMount,
@@ -109,11 +127,13 @@
       beforeCreate && beforeCreate()
 
       const state = reactive(data())
+      const [props, attrs] = resolveProps(propsOption, vnode.props)
 
       // 定义组件实例，组件实例本质上是一个对象
       // 这个对象包含了与组件有关的信息
       const instance = {
         state,
+        props: shallowReactive(props),
         isMounted: false,
         subTree: null,
       }
@@ -156,7 +176,43 @@
       )
     }
 
-    function patchComponent(oldNode, newNode, anchor) {}
+    function patchComponent(oldNode, newNode, anchor) {
+      const instance = (newNode.component = oldNode.component)
+
+      // 获取当前组件实例的 props
+      const { props } = instance
+
+      // 判断新旧 props 是否有变化
+      if (hasPropsChanged(oldNode.props, newNode.props)) {
+        const [nextProps] = resolveProps(
+          newNode.type.props,
+          newNode.props
+        )
+
+        // 更新 props，因为 props 是浅响应式的，所以直接赋值即可
+        for (const key in nextProps) {
+          props[key] = nextProps[key]
+        }
+
+        // 删除不存在的 props
+        for (const key in props) {
+          if (!(key in nextProps)) {
+            delete props[key]
+          }
+        }
+      }
+    }
+
+    function hasPropsChanged(oldProps, newProps) {
+      const oldPropsKeys = Object.keys(oldProps)
+      const newPropsKeys = Object.keys(newProps)
+
+      if (oldPropsKeys.length !== newPropsKeys.length) {
+        return true
+      }
+
+      return oldPropsKeys.some((k) => oldProps[k] !== newProps[k])
+    }
 
     function patchChildren(oldNode, newNode, container) {
       // 如果新的子节点是文本节点
@@ -565,6 +621,9 @@
 
   const MyComponent = {
     name: 'MyComponent',
+    props: {
+      text: String,
+    },
     data() {
       return {
         foo: `I'am text from data`,
