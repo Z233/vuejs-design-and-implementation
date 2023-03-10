@@ -99,13 +99,32 @@
 
       const state = reactive(data())
 
+      // 定义组件实例，组件实例本质上是一个对象
+      // 这个对象包含了与组件有关的信息
+      const instance = {
+        state,
+        isMounted: false,
+        subTree: null,
+      }
+
+      vnode.component = instance
+
       // 使用 effect 包裹 render 函数，追踪响应式数据的变化
       effect(
         () => {
           // 将 render 函数当中的 this 硬绑定为 state
           const subTree = render.call(state, state)
-          // TODO: 每次发生更新时都会重新挂载，需要优化
-          patch(null, subTree, container, anchor)
+          // 检查组件是否已经被挂载
+          if (instance.isMounted) {
+            // 如果已经被挂载，执行更新操作
+            patch(instance.subTree, subTree, container, anchor)
+          } else {
+            // 如果没有被挂载，执行挂载操作
+            instance.isMounted = true
+            patch(null, subTree, container, anchor)
+          }
+          // 更新组件实例的子树
+          instance.subTree = subTree
         },
         {
           // 缓存队列，避免多次副作用执行带来的性能问题
