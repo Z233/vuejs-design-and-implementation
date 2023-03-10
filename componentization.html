@@ -126,7 +126,7 @@
 
       beforeCreate && beforeCreate()
 
-      const state = reactive(data())
+      const state = reactive(data?.() ?? {})
       const [props, attrs] = resolveProps(propsOption, vnode.props)
 
       // 定义组件实例，组件实例本质上是一个对象
@@ -140,31 +140,61 @@
 
       vnode.component = instance
 
-      created && created.call(state)
+      const renderContext = new Proxy(instance, {
+        get(target, key, receiver) {
+          const { state, props } = target
+          // 先尝试从自身状态当中获取数据
+          if (key in state) {
+            return state[key]
+          } else if (key in props) {
+            // 再尝试从 props 中获取数据
+            return props[key]
+          } else {
+            console.error(`Property ${key} is not defined.`)
+          }
+        },
+        set(target, key, value, receiver) {
+          const { state, props } = target
+          // 更新自身状态
+          if (state && key in state) {
+            state[key] = value
+          } else if (key in props) {
+            // 警告，不允许在组件外部修改 props
+            console.warn(
+              `Attempting to mutate prop "${k}". Props are readonly.`
+            )
+          } else {
+            console.error(`Property ${key} is not defined.`)
+          }
+          return true
+        },
+      })
+
+      created && created.call(renderContext)
 
       // 使用 effect 包裹 render 函数，追踪响应式数据的变化
       effect(
         () => {
           // 将 render 函数当中的 this 硬绑定为 state
-          const subTree = render.call(state, state)
+          const subTree = render.call(renderContext, state)
           // 检查组件是否已经被挂载
           if (instance.isMounted) {
             // 如果已经被挂载，执行更新操作
 
-            beforeUpdate && beforeUpdate.call(state)
+            beforeUpdate && beforeUpdate.call(renderContext)
 
             patch(instance.subTree, subTree, container, anchor)
 
-            updated && updated.call(state)
+            updated && updated.call(renderContext)
           } else {
             // 如果没有被挂载，执行挂载操作
 
-            beforeMount && beforeMount.call(state)
+            beforeMount && beforeMount.call(renderContext)
 
             patch(null, subTree, container, anchor)
             instance.isMounted = true
 
-            mounted && mounted.call(state)
+            mounted && mounted.call(renderContext)
           }
           // 更新组件实例的子树
           instance.subTree = subTree
@@ -624,21 +654,19 @@
     props: {
       text: String,
     },
-    data() {
-      return {
-        foo: `I'am text from data`,
-      }
-    },
     render() {
       return {
         type: 'div',
-        children: `我是文本内容：${this.foo}`,
+        children: `我是文本内容：${this.text}`,
       }
     },
   }
 
   const CompVNode = {
     type: MyComponent,
+    props: {
+      text: "I'm text from props",
+    },
   }
 
   renderer.render(CompVNode, document.getElementById('app'))
