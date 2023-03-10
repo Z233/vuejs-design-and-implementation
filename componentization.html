@@ -95,7 +95,18 @@
 
     function mountComponent(vnode, container, anchor) {
       const componentOptions = vnode.type
-      const { render, data } = componentOptions
+      const {
+        render,
+        data,
+        beforeCreate,
+        created,
+        beforeMount,
+        mounted,
+        beforeUpdate,
+        updated,
+      } = componentOptions
+
+      beforeCreate && beforeCreate()
 
       const state = reactive(data())
 
@@ -109,6 +120,8 @@
 
       vnode.component = instance
 
+      created && created.call(state)
+
       // 使用 effect 包裹 render 函数，追踪响应式数据的变化
       effect(
         () => {
@@ -117,11 +130,21 @@
           // 检查组件是否已经被挂载
           if (instance.isMounted) {
             // 如果已经被挂载，执行更新操作
+
+            beforeUpdate && beforeUpdate.call(state)
+
             patch(instance.subTree, subTree, container, anchor)
+
+            updated && updated.call(state)
           } else {
             // 如果没有被挂载，执行挂载操作
-            instance.isMounted = true
+
+            beforeMount && beforeMount.call(state)
+
             patch(null, subTree, container, anchor)
+            instance.isMounted = true
+
+            mounted && mounted.call(state)
           }
           // 更新组件实例的子树
           instance.subTree = subTree
