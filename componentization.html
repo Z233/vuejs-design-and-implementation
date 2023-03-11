@@ -4,7 +4,8 @@
 
 <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
 <script>
-  const { reactive, effect, shallowReactive } = VueReactivity
+  const { reactive, effect, shallowReactive, shallowReadonly } =
+    VueReactivity
 
   const Text = Symbol()
   const Comment = Symbol()
@@ -115,6 +116,7 @@
       const {
         render,
         data,
+        setup,
         props: propsOption,
         beforeCreate,
         created,
@@ -138,6 +140,29 @@
         subTree: null,
       }
 
+      const setupContext = { attrs }
+
+      // 向 setup 传递参数：
+      // 第一个参数是 props
+      // 第二个参数是 setupContext
+      const setupResult = setup(
+        shallowReadonly(instance.props),
+        setupContext
+      )
+
+      // 存储 setup 返回的数据
+      let setupState = null
+
+      if (typeof setupResult === 'function') {
+        // setup 函数的返回值是函数，将其作为渲染函数
+        if (render) {
+          console.error('setup 函数返回渲染函数，render 选项将被忽略')
+        }
+        render = setupResult
+      } else {
+        setupState = setupResult
+      }
+
       vnode.component = instance
 
       const renderContext = new Proxy(instance, {
@@ -149,6 +174,9 @@
           } else if (key in props) {
             // 再尝试从 props 中获取数据
             return props[key]
+          } else if (key in setupState) {
+            // 尝试在 setupState 中查找
+            return setupState[key]
           } else {
             console.error(`Property ${key} is not defined.`)
           }
@@ -163,6 +191,8 @@
             console.warn(
               `Attempting to mutate prop "${k}". Props are readonly.`
             )
+          } else if (setupState && k in setupState) {
+            setupState[k] = v
           } else {
             console.error(`Property ${key} is not defined.`)
           }
