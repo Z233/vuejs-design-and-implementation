@@ -44,7 +44,8 @@
     // 将在 propsOption 当中定义的属性，从 propsData 中提取出来
     // 如果没有在 propsOption 当中定义的属性，当作 attrs 处理
     for (const key in propsData) {
-      if (key in propsOption) {
+      // 将 on 开头的 props 都添加到 props 当中
+      if (key in propsOption || key.startsWith('on')) {
         props[key] = propsData[key]
       } else {
         attrs[key] = propsData[key]
@@ -140,7 +141,21 @@
         subTree: null,
       }
 
-      const setupContext = { attrs }
+      function emit(event, ...payload) {
+        // 对事件名称进行处理，如将 change -> onChange
+        const eventName = `on${
+          event[0].toUpperCase() + event.slice(1)
+        }`
+        // 在 props 当中找到相应的事件处理函数
+        const handler = instance.props[eventName]
+        if (handler) {
+          handler(...payload)
+        } else {
+          console.error('事件不存在')
+        }
+      }
+
+      const setupContext = { attrs, emit }
 
       // 向 setup 传递参数：
       // 第一个参数是 props
